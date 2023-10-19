@@ -22,20 +22,16 @@
 #[derive(Clone, Copy)]
 pub enum AddressingMode {
     Absolute,                 // Second and third byte form the address of the opperand.
-    AbsoluteIndexedIndirect, // The X Index register is added to the second and third bytes of the instruction is used to form an address to a pointer. This pointer is the opperand.
     AbsoluteX, // Second and third bytes of instruction form an address to which the X register is added. The sum is the address of the operand
     AbsoluteY, // Second and third bytes of instruction form an address to which the Y register is added. The sum is the address of the operand
     AbsoluteIndirect, // Second and third bytes of instruction form an address to a pointer. Program Counter is set to this pointer
-    Accumulator,      // Opperand is the current value of the Accumulator
     Immediate,        // Operand is the second byte
     Implied,          // A single bye instruction, no operands
     Relative, // An offset in the second byte of the instruction is added to the program counter if the branch statement is true.
-    Stack, // Uses $0100-$01FF. The SP register is 8 bit and 0x0100 is added to it to determine the stack address.
     ZeroPage, // Addresses the zero page with the second byte of the instruction. Essentially the Absolute addressing equivalent.
     ZeroPageIndexedIndirectX, // The X register is added to the second byte to form an address of a pointer. Operand is the data at this pointer
     ZeroPageX, // The X Register is added to the second byte to form the address of the operand.
     ZeroPageY, // The Y Register is added to the second byte to form the address of the operand.
-    ZeroPageIndirect, // The second byte is a zero page indirect address that points to the low byte of a two byte address.
     ZeroPageIndirectIndexedY, // Retreives an address from the zero page. The Y address is then added to this address. The resulting address is a pointer to the operand.
 }
 
@@ -65,8 +61,8 @@ const fn group_one(opcode: u8) -> AddressingMode {
         0b011 => AddressingMode::Absolute,
         0b100 => AddressingMode::ZeroPageIndirectIndexedY,
         0b101 => AddressingMode::ZeroPageX,
-        0b110 => AddressingMode::AbsoluteX,
-        0b111 => AddressingMode::AbsoluteY,
+        0b110 => AddressingMode::AbsoluteY,
+        0b111 => AddressingMode::AbsoluteX,
         _ => panic!(),
     }
 }
