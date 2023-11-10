@@ -21,7 +21,9 @@ impl Mos6502 {
         let opcode = memory.read(self.program_counter);
         let addressing_mode: addressingmodes::AddressingMode = ADDRESSING_MODES[opcode as usize];
         let instruction = INSTRUCTIONS[opcode as usize];
-        match instruction {}
+        match instruction {
+            _ => todo!(),
+        }
         0
     }
 
