@@ -1,9 +1,10 @@
 mod addressingmodes;
-mod instructions;
+mod instruction_table;
 mod timing;
+mod instructions;
 
 use addressingmodes::{AddressingMode, ADDRESSING_MODES};
-use instructions::{Instruction, INSTRUCTIONS};
+use instruction_table::{Instruction, INSTRUCTIONS};
 
 use crate::cpu_memory::CpuMemory;
 
@@ -13,6 +14,20 @@ struct Mos6502 {
     index_x: u8,
     index_y: u8,
     stack_pointer: u8,
+    carry: bool,
+    zero: bool,
+    interrupt_enable: bool,
+    decimal_mode: bool,
+    interrupt: bool,
+    overflow: bool,
+    sign: bool,
+}
+
+enum Operand {
+    Address(u16),
+    Immediate(u8),
+    Offset(u16),
+    Implied,
 }
 
 impl Mos6502 {
@@ -22,36 +37,37 @@ impl Mos6502 {
         let addressing_mode: addressingmodes::AddressingMode = ADDRESSING_MODES[opcode as usize];
         let instruction = INSTRUCTIONS[opcode as usize];
         match instruction {
-            _ => todo!(),
+            Instruction::ADC => self.adc(memory),
+            _ => todo!()
         }
         0
     }
 
-    fn get_address(self, memory: &CpuMemory, mode: AddressingMode) -> Option<(u16, bool)> {
+    fn get_operand(self, memory: &CpuMemory, mode: AddressingMode) -> (Operand, bool) {
         match mode {
             AddressingMode::Absolute | AddressingMode::AbsoluteIndirect => {
                 let low = memory.read(self.program_counter + 1);
                 let high = memory.read(self.program_counter + 2);
                 let address = u16::from_be_bytes([high, low]);
-                Some((address, false))
+                (Operand::Address(address), false)
             }
             AddressingMode::AbsoluteX => {
                 let low = memory.read(self.program_counter + 1);
                 let high = memory.read(self.program_counter + 2);
                 let address = u16::from_be_bytes([high, low]) + self.index_x as u16;
                 let page_crossed = self.program_counter & 0xFF00 != address & 0xFF00;
-                Some((address, page_crossed))
+                (Operand::Address(address), page_crossed)
             }
             AddressingMode::AbsoluteY => {
                 let low = memory.read(self.program_counter + 1);
                 let high = memory.read(self.program_counter + 2);
                 let address = u16::from_be_bytes([high, low]) + self.index_y as u16;
                 let page_crossed = self.program_counter & 0xFF00 != address & 0xFF00;
-                Some((address, page_crossed))
+                (Operand::Address(address), page_crossed)
             }
             AddressingMode::ZeroPage => {
                 let address = memory.read(self.program_counter + 1);
-                Some((address as u16, false))
+                (Operand::Address(address as u16), false)
             }
             AddressingMode::ZeroPageIndexedIndirectX => {
                 let address: u8 = memory
@@ -60,28 +76,40 @@ impl Mos6502 {
                 let low = memory.read(address as u16);
                 let high = memory.read(address.wrapping_add(1) as u16);
                 let address = u16::from_be_bytes([high, low]);
-                Some((address, false))
+                (Operand::Address(address), false)
             }
             AddressingMode::ZeroPageX => {
                 let address: u8 = memory
                     .read(self.program_counter + 1)
                     .wrapping_add(self.index_x);
-                Some(((address as u16), false))
+                (Operand::Address(address as u16), false)
             }
             AddressingMode::ZeroPageY => {
                 let address: u8 = memory
                     .read(self.program_counter + 1)
                     .wrapping_add(self.index_y);
-                Some(((address as u16), false))
+                (Operand::Address(address as u16), false)
             }
             AddressingMode::ZeroPageIndirectIndexedY => {
                 let address: u8 = memory.read(self.program_counter);
                 let low = memory.read(address as u16);
                 let high = memory.read(address.wrapping_add(1) as u16);
                 let address = u16::from_be_bytes([high, low]).wrapping_add(self.index_y as u16);
-                Some((address, false))
+                (Operand::Address(address), false)
             }
-            _ => todo!("immediate, implied"),
+            AddressingMode::Immediate => {
+                let immediate: u8 = memory.read(self.program_counter + 1);
+                (Operand::Immediate(immediate), false)
+            }
+            AddressingMode::Relative => {
+                let low = memory.read(self.program_counter + 1);
+                let high = memory.read(self.program_counter + 2);
+                let offset = u16::from_be_bytes([high, low]);
+                (Operand::Offset(offset), false)
+            }
+            AddressingMode::Implied => {
+                (Operand::Implied, false)
+            }
         }
     }
 

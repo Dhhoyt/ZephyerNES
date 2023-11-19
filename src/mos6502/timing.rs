@@ -1,4 +1,4 @@
-use super::{addressingmodes::AddressingMode, instructions::Instruction};
+use super::{addressingmodes::AddressingMode, instruction_table::Instruction};
 
 fn get_timing(mode: AddressingMode, instruction: Instruction, crossed_page: bool) -> usize {
     match mode {
