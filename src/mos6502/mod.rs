@@ -1,7 +1,9 @@
 mod addressingmodes;
 mod instruction_table;
-mod timing;
 mod instructions;
+mod timing;
+
+use core::panic;
 
 use addressingmodes::{AddressingMode, ADDRESSING_MODES};
 use instruction_table::{Instruction, INSTRUCTIONS};
@@ -23,27 +25,21 @@ struct Mos6502 {
     sign: bool,
 }
 
-enum Operand {
-    Address(u16),
-    Immediate(u8),
-    Offset(u16),
-    Implied,
-}
-
 impl Mos6502 {
     // Returns the number of cycles this instruction took
     fn run_instruction(&mut self, memory: &mut CpuMemory) -> usize {
         let opcode = memory.read(self.program_counter);
         let addressing_mode: addressingmodes::AddressingMode = ADDRESSING_MODES[opcode as usize];
         let instruction = INSTRUCTIONS[opcode as usize];
+        let (operand, crossed_page) = self.get_operand(memory, addressing_mode);
         match instruction {
-            Instruction::ADC => self.adc(memory),
-            _ => todo!()
+            Instruction::ADC => self.adc(memory, operand),
+            _ => todo!(),
         }
         0
     }
 
-    fn get_operand(self, memory: &CpuMemory, mode: AddressingMode) -> (Operand, bool) {
+    fn get_operand(&self, memory: &CpuMemory, mode: AddressingMode) -> (Operand, bool) {
         match mode {
             AddressingMode::Absolute | AddressingMode::AbsoluteIndirect => {
                 let low = memory.read(self.program_counter + 1);
@@ -107,9 +103,7 @@ impl Mos6502 {
                 let offset = u16::from_be_bytes([high, low]);
                 (Operand::Offset(offset), false)
             }
-            AddressingMode::Implied => {
-                (Operand::Implied, false)
-            }
+            AddressingMode::Implied => (Operand::Implied, false),
         }
     }
 
@@ -131,5 +125,22 @@ impl Mos6502 {
         let prev_counter = self.program_counter;
         self.program_counter = self.program_counter.wrapping_add(step);
         (self.program_counter >> 8 != prev_counter >> 8) as usize
+    }
+}
+
+enum Operand {
+    Address(u16),
+    Immediate(u8),
+    Offset(u16),
+    Implied,
+}
+
+impl Operand {
+    pub fn read(&self, memory: &CpuMemory) -> u8 {
+        match self {
+            Operand::Address(v) => memory.read(*v),
+            Operand::Immediate(v) => *v,
+            _ => panic!("Tried to read the value of a non-operand value"),
+        }
     }
 }
