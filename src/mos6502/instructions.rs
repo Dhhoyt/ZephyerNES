@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::cpu_memory::CpuMemory;
 
 use super::Operand;
@@ -6,6 +8,10 @@ impl super::Mos6502 {
     pub fn adc(&mut self, memory: &mut CpuMemory, operand: Operand) {
         let operand = operand.read(memory);
         if !self.decimal_mode {
+            let res = operand.overflowing_add(self.accumulator);
+            let carry_in_res = res.0.overflowing_add(self.carry as u8);
+            self.carry = res.1 | carry_in_res.1;
+            self.accumulator = carry_in_res.0;
         } else {
             let a_low = self.accumulator & 0b00001111;
             let a_high = (self.accumulator & 0b11110000) >> 4;
@@ -22,5 +28,14 @@ impl super::Mos6502 {
 
             self.accumulator = (res_upper << 4) | res_lower;
         }
+    }
+
+    pub fn and(&mut self, memory: &mut CpuMemory, operand: Operand) {
+        let operand = operand.read(memory);
+        self.accumulator = self.accumulator & operand;
+    }
+
+    pub fn asl(&mut self) {
+        self.accumulator <<= 1;
     }
 }
